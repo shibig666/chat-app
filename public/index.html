@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>欢迎进入聊天室</title>
+    <!-- <link rel="stylesheet" href="css/style.css"> -->
+    <style>
+        /* 简单的登录页面样式 */
+        .login-container {
+            width: 300px;
+            margin: 200px auto;
+            text-align: center;
+        }
+        .login-container input {
+            width: 80%;
+            padding: 10px;
+            margin-bottom: 20px;
+            font-size: 16px;
+        }
+        .login-container button {
+            width: 85%;
+            padding: 10px;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <h2>欢迎进入聊天室</h2>
+        <form id="login-form">
+            <input type="text" id="username" placeholder="请输入用户名" required>
+            <button type="submit" class="sendButton">进入聊天室</button>
+        </form>
+    </div>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+    </style>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="js/script.js"></script>
+</body>
+</html>

@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <title>聊天室</title>
+    <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+    <div class="chat-container">
+        <header class="header">
+            <div class="header-info">
+                <img src="img/image.png" class="avatar" />
+                <span class="username">原批群</span>
+            </div>
+            <button class="exitButton" onclick="exit()">退出</button>
+        </header>
+
+        <section class="chat-area" id="chat-area">
+            <div class="message-list" id="message-list"></div>
+        </section>
+
+        <footer class="input-area">
+            <input
+                type="text"
+                id="chat-input"
+                class="chat-input"
+                placeholder="输入消息..."
+                onkeydown="checkEnter(event)"
+            />
+            <button class="sendButton" onclick="sendChatMessage()">
+                <div class="svg-wrapper-1">
+                    <div class="svg-wrapper">
+                        <!-- 发送按钮图标 -->
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            width="24"
+                            height="24"
+                        >
+                            <path fill="none" d="M0 0h24v24H0z"></path>
+                            <path
+                                fill="currentColor"
+                                d="M1.946 9.315c-.522-.174-.527-.455.01-.634l19.087-6.362c.529-.176.832.12.684.638l-5.454 19.086c-.15.529-.455.547-.679.045L12 14l6-8-8 6-8.054-2.685z"
+                            ></path>
+                        </svg>
+                    </div>
+                </div>
+                <span>发送</span>
+            </button>
+        </footer>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="js/script.js"></script>
+</body>
+</html>
