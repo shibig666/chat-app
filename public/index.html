@@ -1,48 +1,78 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
-<head>
-    <meta charset="UTF-8">
-    <title>欢迎进入聊天室</title>
-    <!-- <link rel="stylesheet" href="css/style.css"> -->
-    <style>
-        /* 简单的登录页面样式 */
-        .login-container {
-            width: 300px;
-            margin: 200px auto;
-            text-align: center;
-        }
-        .login-container input {
-            width: 80%;
-            padding: 10px;
-            margin-bottom: 20px;
-            font-size: 16px;
-        }
-        .login-container button {
-            width: 85%;
-            padding: 10px;
-            font-size: 18px;
-        }
-    </style>
-</head>
-<body>
-    <div class="login-container">
-        <h2>欢迎进入聊天室</h2>
-        <form id="login-form">
-            <input type="text" id="username" placeholder="请输入用户名" required>
-            <button type="submit" class="sendButton">进入聊天室</button>
-        </form>
-    </div>
-    <style>
-        body {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-        }
-    </style>
+    <head>
+        <meta charset="UTF-8" />
+        <title>欢迎进入聊天室</title>
+        <!-- <link rel="stylesheet" href="css/style.css"> -->
+        <style>
+            /* 简单的登录页面样式 */
+            .container {
+                width: 100%;
+                height: 100%;
+                --color1: rgb(108, 231, 221);
+                --color2: rgb(250, 255, 178);
+                background-color: var(--color1);
+                background-image: linear-gradient(
+                        45deg,
+                        var(--color2) 25%,
+                        transparent 25%,
+                        transparent 75%,
+                        var(--color2) 75%,
+                        var(--color2)
+                    ),
+                    linear-gradient(
+                        45deg,
+                        var(--color2) 25%,
+                        var(--color1) 25%,
+                        var(--color1) 75%,
+                        var(--color2) 75%,
+                        var(--color2)
+                    );
+                background-size: 60px 60px;
+                background-position: 0 0, 30px 30px;
+            }
+            .login-container {
+                /* width: 300px;
+                margin: 200px auto; */
+                text-align: center;
+            }
+            .login-container input {
+                width: 80%;
+                padding: 10px;
+                margin-bottom: 20px;
+                font-size: 16px;
+            }
+            .login-container button {
+                width: 85%;
+                padding: 10px;
+                font-size: 18px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="login-container">
+            <h2>欢迎进入聊天室</h2>
+            <form id="login-form">
+                <input
+                    type="text"
+                    id="username"
+                    placeholder="请输入用户名"
+                    required
+                />
+                <button type="submit" class="sendButton">进入聊天室</button>
+            </form>
+        </div>
+        <style>
+            body {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                height: 100vh;
+                margin: 0;
+            }
+        </style>
 
-    <script src="/socket.io/socket.io.js"></script>
-    <script src="js/script.js"></script>
-</body>
+        <script src="/socket.io/socket.io.js"></script>
+        <script src="js/script.js"></script>
+    </body>
 </html>

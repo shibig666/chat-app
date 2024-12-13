@@ -7,7 +7,8 @@
 }
 
 body {
-    background-color: #d3dbfc;
+    background-color: white;
+    animation: backgroundGradient 1s ease-in-out forwards; /* 2秒的渐变效果 */
 }
 
 /* 滚动条样式 */
@@ -21,6 +22,17 @@ body {
 }
 
 /* 动画 */
+/* 页面背景渐变 */
+@keyframes backgroundGradient {
+    0% {
+        background: white;
+    }
+
+    100% {
+        background: #d3dbfc;
+    }
+}
+
 @keyframes slideUp {
     0% {
         transform: translateY(60px);
@@ -47,6 +59,19 @@ body {
     }
     to {
         transform: translateY(-0.1em);
+    }
+}
+
+/* 飞出动画 */
+@keyframes flyUp {
+    0% {
+        transform: translateX(1.2em) rotate(45deg) scale(1.1);
+    }
+    75% {
+        transform: translateX(100px) rotate(45deg) scale(1.1);
+    }
+    100% {
+        transform: translateX(0) rotate(0) scale(1);
     }
 }
 
@@ -141,7 +166,7 @@ body {
     animation: slideUp 0.3s ease-out;
 }
 
-.system-message{
+.system-message {
     color: #e55b82;
     text-align: center;
     font-size: 20px;
@@ -294,6 +319,7 @@ body {
     position: relative;
 }
 
+
 .sendButton span {
     display: block;
     margin-left: 0.3em;
@@ -307,7 +333,7 @@ body {
 }
 
 .sendButton:hover .svg-wrapper {
-    animation: fly 0.6s ease-in-out infinite alternate;
+    animation: fly 0.8s ease-in-out infinite alternate;
 }
 
 .sendButton:hover svg {
@@ -320,6 +346,10 @@ body {
 
 .sendButton:active {
     transform: scale(0.8);
+}
+
+.sendButton:focus svg {
+    animation: flyUp 0.8s forwards; /* 点击时触发 flyUp 动画 */
 }
 
 /* 退出按钮 */
