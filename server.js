@@ -3,6 +3,7 @@ const app = express();
 const http = require("http").createServer(app);
 const io = require("socket.io")(http);
 const path = require("path");
+var usernames = [];
 
 // 静态文件服务
 app.use(express.static(path.join(__dirname, "public")));
@@ -17,19 +18,53 @@ app.get("/:username", (req, res) => {
     res.sendFile(path.join(__dirname, "public", "chat.html"));
 });
 
+
+function transformUsernames(){
+    var result=[];
+    for (var i = 0; i < usernames.length; i++) {
+        result.push(usernames[i].username);
+    }
+    return result.join(", ");
+}
+
 // Socket.IO 处理
 io.on("connection", (socket) => {
-    let username = "";
 
     // 接收用户名
     socket.on("join", (data) => {
-        username = data.username;
-        socket.username = username;
-        io.emit("userJoined", { username });
+        var username = data.username;
+        var userID = data.userID;
+        var isExist = false;
+        for (var i = 0; i < usernames.length; i++) {
+            if (usernames[i].username == username) {
+                usernames[i].userID = userID;
+                isExist = true;
+                break;
+            }
+        }
+        if (!isExist) {
+            console.log(username + " 加入了聊天室");
+            usernames.push({ username: username, userID: userID });
+            console.log("当前在线用户：" + transformUsernames(usernames));
+            io.emit("userJoined", { username });
+        }
     });
 
     // 接收并广播消息
     socket.on("sendMessage", (data) => {
+        var userID = data.userID;
+        var username = null;
+        for (var i = 0; i < usernames.length; i++) {
+            if (usernames[i].userID == userID) {
+                username = usernames[i].username;
+                break;
+            }
+        }
+        if (!username) {
+            console.log("未找到用户ID：" + userID);
+            return;
+        }
+        console.log(username + " 发送了：" + data.message);
         io.emit("receiveMessage", {
             username: username,
             message: data.message,
@@ -38,8 +73,21 @@ io.on("connection", (socket) => {
     });
 
     // 用户断开连接
-    socket.on("disconnect", () => {
-        if (username) {
+    socket.on("userDisconnect", (data) => {
+        var userID = data.userID;
+        var username = null;
+        var isExist = false;
+        for (var i = 0; i < usernames.length; i++) {
+            if (usernames[i].userID == userID) {
+                username = usernames[i].username;
+                usernames.splice(i, 1);
+                isExist = true;
+                break;
+            }
+        }
+        if (isExist) {
+            console.log(username + " 离开了聊天室");
+            console.log("当前在线用户：" + transformUsernames(usernames));
             io.emit("userLeft", { username });
         }
     });
