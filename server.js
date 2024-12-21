@@ -3,7 +3,11 @@ const app = express();
 const http = require("http").createServer(app);
 const io = require("socket.io")(http);
 const path = require("path");
-var usernames = [];
+const crypto = require("crypto");
+
+var userInfo = [];
+var chatingUsers = [];
+var messages = [];
 
 // 静态文件服务
 app.use(express.static(path.join(__dirname, "public")));
@@ -14,85 +18,141 @@ app.get("/", (req, res) => {
 });
 
 // 动态路由，根据用户名渲染聊天页面
-app.get("/:username", (req, res) => {
+app.get("/chat", (req, res) => {
     res.sendFile(path.join(__dirname, "public", "chat.html"));
 });
 
-
-function transformUsernames(){
-    var result=[];
-    for (var i = 0; i < usernames.length; i++) {
-        result.push(usernames[i].username);
-    }
-    return result.join(", ");
+// 生成更安全的 token
+function generateToken() {
+    return crypto.randomBytes(64).toString("hex");
 }
 
-// Socket.IO 处理
-io.on("connection", (socket) => {
-
-    // 接收用户名
-    socket.on("join", (data) => {
-        var username = data.username;
-        var userID = data.userID;
-        var isExist = false;
-        for (var i = 0; i < usernames.length; i++) {
-            if (usernames[i].username == username) {
-                usernames[i].userID = userID;
-                isExist = true;
-                break;
-            }
-        }
-        if (!isExist) {
-            console.log(username + " 加入了聊天室");
-            usernames.push({ username: username, userID: userID });
-            console.log("当前在线用户：" + transformUsernames(usernames));
-            io.emit("userJoined", { username });
-        }
-    });
-
-    // 接收并广播消息
-    socket.on("sendMessage", (data) => {
-        var userID = data.userID;
-        var username = null;
-        for (var i = 0; i < usernames.length; i++) {
-            if (usernames[i].userID == userID) {
-                username = usernames[i].username;
-                break;
-            }
-        }
-        if (!username) {
-            console.log("未找到用户ID：" + userID);
+// 登录接口
+app.post("/api/login", express.json(), (req, res) => {
+    const username = req.body.username;
+    if (username) {
+        const existingUser = userInfo.find(
+            (user) => user.username === username
+        );
+        if (existingUser) {
+            existingUser.token = generateToken();
+            res.json({ success: true, token: existingUser.token });
             return;
         }
+        const token = generateToken();
+        res.json({ success: true, token: token });
+        userInfo.push({ username: username, token: token });
+    } else {
+        res.json({ success: false, message: "请输入用户名" });
+    }
+});
+
+// 验证 token 接口
+app.post("/api/verify", express.json(), (req, res) => {
+    const token = req.body.token;
+    if (token) {
+        const user = userInfo.find((user) => user.token === token);
+        if (user) {
+            res.json({ success: true, message: user.username });
+        } else {
+            res.json({ success: false, message: "不存在该用户" });
+        }
+    } else {
+        res.json({ success: false, message: "缺少token" });
+    }
+});
+
+// 用户 Token 验证
+function verifyUserToken(token) {
+    const user = userInfo.find((user) => user.token === token);
+    if (user) {
+        return user.username;
+    } else {
+        return null;
+    }
+}
+
+// 获取当前时间
+function getCurrentTime() {
+    const now = new Date();
+    return now.toISOString(); // 格式化为 ISO 格式，或使用其他格式
+}
+
+// 格式化在线用户列表
+function transformUsernames() {
+    return userInfo.map((user) => user.username).join(", ");
+}
+
+io.on("connection", (socket) => {
+    socket.on("join", (data) => {
+        const username = verifyUserToken(data.token);
+        if (!username) {
+            socket.emit("errorMessage", { message: "Token 不存在" });
+            return;
+        }
+        console.log(username + " 加入了聊天室");
+        console.log("当前在线用户：" + transformUsernames());
+
+        // 通知其他用户某人加入
+        chatingUsers.forEach((user) => {
+            user.socket.emit("userJoin", { username });
+        });
+
+        chatingUsers.push({ username: username, socket: socket });
+    });
+
+    socket.on("sendMessage", (data) => {
+        const username = chatingUsers.find(
+            (user) => user.socket === socket
+        ).username;
+
+        if (!username) {
+            console.log("未找到用户");
+            socket.emit("errorMessage", { message: "未找到用户" });
+            return;
+        }
+
         console.log(username + " 发送了：" + data.message);
-        io.emit("receiveMessage", {
+        const time = getCurrentTime();
+        messages.push({
             username: username,
             message: data.message,
-            time: data.time,
+            time: time,
+        });
+
+        // 广播消息给所有在线用户
+        chatingUsers.forEach((user) => {
+            user.socket.emit("receiveMessage", {
+                username: username,
+                message: data.message,
+                time: time,
+            });
         });
     });
 
-    // 用户断开连接
-    socket.on("userDisconnect", (data) => {
-        var userID = data.userID;
-        var username = null;
-        var isExist = false;
-        for (var i = 0; i < usernames.length; i++) {
-            if (usernames[i].userID == userID) {
-                username = usernames[i].username;
-                usernames.splice(i, 1);
-                isExist = true;
-                break;
-            }
+    socket.on("disconnect", () => {
+        const user = chatingUsers.find((user) => user.socket === socket);
+
+        if (!user) {
+            console.log("未找到用户");
+            socket.emit("errorMessage", { message: "未找到用户" });
+            return;
         }
-        if (isExist) {
-            console.log(username + " 离开了聊天室");
-            console.log("当前在线用户：" + transformUsernames(usernames));
-            io.emit("userLeft", { username });
-        }
+
+        const username = user.username;
+        console.log(username + " 离开了聊天室");
+        console.log("当前在线用户：" + transformUsernames());
+
+        // 通知其他用户某人离开
+        chatingUsers.forEach((user) => {
+            user.socket.emit("userLeft", { username });
+        });
+
+        chatingUsers = chatingUsers.filter((user) => user.socket !== socket);
     });
+
 });
 
 http.listen(3000, () => {
-    console.log("服务器已启动，监听端口 3000");
+    console.log("Server running on http://localhost:3000");
 });

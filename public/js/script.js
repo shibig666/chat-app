@@ -1,214 +1,226 @@
-// 检查当前页面是否为登录页
-if (
-    window.location.pathname === "/" ||
-    window.location.pathname === "/index.html"
-) {
-    const loginForm = document.getElementById("login-form");
-    loginForm.addEventListener("submit", function (event) {
-        event.preventDefault();
-        const usernameInput = document.getElementById("username");
-        const username = usernameInput.value.trim();
-        if (username) {
-            window.location.href = "/" + encodeURIComponent(username);
-        } else {
-            usernameInput.placeholder = "用户名不能为空";
-        }
-    });
+// 获取用户的 token
+const userToken = document.cookie.replace(
+    /(?:(?:^|.*;\s*)userToken\s*\=\s*([^;]*).*$)|^.*$/,
+    "$1"
+);
+
+// 如果没有 token，表示用户没有登录，重定向到登录页
+if (!userToken) {
+    alert("请先登录");
+    window.location.href = "index.html";
 } else {
-    // 聊天页面的代码
+    // 如果有 token，验证该 token 是否有效
+    verifyUserToken();
+}
 
-    // 建立 Socket.IO 连接
-    const socket = io();
+// 验证 token 是否有效
+function verifyUserToken() {
+    const url = "/api/verify";
+    const postData = { token: userToken };
 
-    // 获取用户名（从 URL 中获取）
-    const urlParts = window.location.pathname.split("/");
-    const username =
-        decodeURIComponent(urlParts[urlParts.length - 1]) || "匿名用户";
+    const fetchData = {
+        method: "POST",
+        body: JSON.stringify(postData),
+        headers: { "Content-Type": "application/json" },
+    };
 
-    // 设置用户名和头像显示
-    // document.getElementById("chat-username").textContent = username;
-    // document.getElementById("user-avatar").textContent = username.charAt(0);
-
-    // 发送用户名给服务器
-    socket.emit("join", { username });
-
-    // 监听发送按钮点击事件
-    document
-        .querySelector(".sendButton")
-        .addEventListener("click", sendChatMessage);
-
-    // 监听回车键
-    function checkEnter(event) {
-        if (event.key === "Enter") {
-            sendChatMessage();
-        }
-    }
-
-    // 发送聊天消息
-    function sendChatMessage() {
-        const inputElement = document.getElementById("chat-input");
-        const message = inputElement.value.trim();
-        if (message === "") {
-            inputElement.placeholder = "输入不能为空";
-            return;
-        }
-
-        const time = getCurrentTime();
-
-        // 本地显示自己发送的消息
-        sendMessage(
-            message,
-            username.charAt(0),
-            "green",
-            "sent",
-            time,
-            username
-        );
-
-        // 发送消息给服务器
-        socket.emit("sendMessage", {
-            message: message,
-            time: time,
+    fetch(url, fetchData)
+        .then((res) => res.json())
+        .then((data) => {
+            if (data.success) {
+                // token 验证成功，存储用户名
+                userName = data.message;
+                console.log(`欢迎，${userName}`);
+            } else {
+                // token 无效，跳转到登录页面
+                alert(data.message);
+                window.location.href = "index.html";
+                document.cookie =
+                    "userToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;"; // 清除 cookie
+            }
+        })
+        .catch((error) => {
+            console.error("Error:", error);
+            window.location.href = "index.html";
         });
+}
 
-        inputElement.value = "";
+// 初始化 Socket.IO 连接
+const socket = io();
+
+// 加入聊天室
+socket.emit("join", { token: userToken });
+
+// 监听其他用户加入聊天室
+socket.on("userJoin", (data) => {
+    if (data.username === userName) return;
+    const systemMessage = `${data.username} 加入了聊天室`;
+    displaySystemMessage(systemMessage);
+});
+
+// 监听其他用户离开聊天室
+socket.on("userLeft", (data) => {
+    if (data.username) {
+        const systemMessage = `${data.username} 离开了聊天室`;
+        displaySystemMessage(systemMessage);
+    }
+});
+
+// 监听服务器的错误信息
+socket.on("errorMessage", (data) => {
+    alert(data.message);
+    window.location.href = "index.html"; // 如果 token 无效，跳转回登录页
+});
+
+// 监听接收到的消息
+socket.on("receiveMessage", (data) => {
+    var messageClass = "sent";
+    var color = "green";
+    if (data.username !== userName) {
+        messageClass = "received";
+        color = "#9b59b6"; // 其他用户的消息颜色
     }
 
-    // 接收并显示其他用户的消息
-    socket.on("receiveMessage", (data) => {
-        if (data.username !== username) {
-            sendMessage(
-                data.message,
-                data.username.charAt(0),
-                "#9b59b6",
-                "received",
-                data.time,
-                data.username
-            );
-        }
-    });
+    // 显示接收到的消息
+    sendMessage(
+        data.message,
+        data.username[0].toUpperCase(), // 头像的第一个字母
+        color,
+        messageClass,
+        data.time,
+        data.username
+    );
+});
 
-    // 提示用户加入
-    socket.on("userJoined", (data) => {
-        if (data.username !== username) {
-            const systemMessage = `${data.username} 加入了聊天室`;
-            displaySystemMessage(systemMessage);
-        }
-    });
+// 滚动到消息列表的底部
+function scrollToBottom() {
+    var messageList = document.getElementById("chat-area");
+    messageList.scrollTop = messageList.scrollHeight;
+}
 
-    // 提示用户离开
-    socket.on("userLeft", (data) => {
-        if (data.username) {
-            const systemMessage = `${data.username} 离开了聊天室`;
-            displaySystemMessage(systemMessage);
-        }
-    });
+// 显示系统消息（例如：某人加入或离开）
+function displaySystemMessage(message) {
+    const messageElement = document.createElement("div");
+    messageElement.classList.add("system-message");
+    messageElement.textContent = message;
+    const messageList = document.getElementById("message-list");
+    messageList.appendChild(messageElement);
+    scrollToBottom();
+}
 
-    // 显示系统消息
-    function displaySystemMessage(message) {
-        const messageElement = document.createElement("div");
-        messageElement.classList.add("system-message");
-        messageElement.textContent = message;
-        const messageList = document.getElementById("message-list");
-        messageList.appendChild(messageElement);
-        scrollToBottom();
+// 创建消息元素
+function createMessageElement(
+    content,
+    avatarText,
+    avatarColor,
+    messageClass,
+    time,
+    userName = ""
+) {
+    // 创建消息容器
+    var messageContainer = document.createElement("div");
+    messageContainer.classList.add("message", messageClass);
+
+    // 创建头像元素
+    var avatar = document.createElement("div");
+    avatar.textContent = avatarText;
+    avatar.classList.add("message-avatar");
+    avatar.style.backgroundColor = avatarColor;
+
+    // 创建消息气泡
+    var messageBubble = document.createElement("div");
+    messageBubble.classList.add("message-bubble");
+
+    // 创建消息时间
+    var messageTime = document.createElement("div");
+    const messageTimeFormatted = new Date(time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    messageTime.textContent = messageTimeFormatted;
+    messageTime.classList.add("message-time");
+    messageBubble.appendChild(messageTime);
+
+    // 创建用户名
+    if (userName) {
+        var messageUser = document.createElement("div");
+        messageUser.textContent = userName;
+        messageUser.classList.add("message-user");
+        messageBubble.appendChild(messageUser);
     }
 
-    // 获取当前时间
-    function getCurrentTime() {
-        const now = new Date();
-        return now.getHours() + ":" + ("0" + now.getMinutes()).slice(-2);
-    }
+    // 创建消息内容
+    var messageContent = document.createElement("div");
+    messageContent.textContent = content;
+    messageContent.classList.add("message-content");
+    messageBubble.appendChild(messageContent);
 
-    // 创建消息元素
-    function createMessageElement(
+    messageContainer.appendChild(avatar);
+    messageContainer.appendChild(messageBubble);
+
+    return messageContainer;
+}
+
+// 发送消息
+function sendMessage(
+    content,
+    avatarText,
+    avatarColor,
+    messageClass,
+    time,
+    userName = ""
+) {
+    var messageList = document.getElementById("message-list");
+    messageList.classList.add("updating");
+
+    // 创建并显示消息
+    var sendMessageElement = createMessageElement(
         content,
         avatarText,
         avatarColor,
         messageClass,
         time,
-        userName = ""
-    ) {
-        // 创建消息容器
-        var messageContainer = document.createElement("div");
-        messageContainer.classList.add("message", messageClass);
+        userName
+    );
+    messageList.appendChild(sendMessageElement);
 
-        // 创建头像元素
-        var avatar = document.createElement("div");
-        avatar.textContent = avatarText;
-        avatar.classList.add("message-avatar");
-        avatar.style.backgroundColor = avatarColor;
+    // 滚动到消息底部
+    scrollToBottom();
 
-        // 创建消息气泡
-        var messageBubble = document.createElement("div");
-        messageBubble.classList.add("message-bubble");
+    var inputText = document.getElementById("chat-input");
+    inputText.placeholder = "输入消息...";
 
-        // 创建消息时间
-        var messageTime = document.createElement("div");
-        messageTime.textContent = time;
-        messageTime.classList.add("message-time");
-        messageBubble.appendChild(messageTime);
+    setTimeout(function () {
+        messageList.classList.remove("updating");
+    }, 300);
+}
 
-        // 创建用户名
-        if (userName) {
-            var messageUser = document.createElement("div");
-            messageUser.textContent = userName;
-            messageUser.classList.add("message-user");
-            messageBubble.appendChild(messageUser);
-        }
+// 监听发送按钮的点击事件
+document
+    .querySelector(".sendButton")
+    .addEventListener("click", sendChatMessage);
 
-        // 创建消息内容
-        var messageContent = document.createElement("div");
-        messageContent.textContent = content;
-        messageContent.classList.add("message-content");
-        messageBubble.appendChild(messageContent);
+// 监听回车键发送消息
+function checkEnter(event) {
+    if (event.key === "Enter") {
+        sendChatMessage();
+    }
+}
 
-        messageContainer.appendChild(avatar);
-        messageContainer.appendChild(messageBubble);
-
-        return messageContainer;
+// 发送聊天消息
+function sendChatMessage() {
+    const inputElement = document.getElementById("chat-input");
+    const message = inputElement.value.trim();
+    if (message === "") {
+        inputElement.placeholder = "输入不能为空";
+        return;
     }
 
-    // 发送消息
-    function sendMessage(
-        messageContent,
-        avatarText,
-        avatarColor,
-        messageClass,
-        time,
-        userName = ""
-    ) {
-        var messageList = document.getElementById("message-list");
-        messageList.classList.add("updating");
+    // 发送消息到服务器
+    socket.emit("sendMessage", { message: message });
 
-        var sendMessageElement = createMessageElement(
-            messageContent,
-            avatarText,
-            avatarColor,
-            messageClass,
-            time,
-            userName
-        );
-        messageList.appendChild(sendMessageElement);
+    inputElement.value = ""; // 清空输入框
+}
 
-        scrollToBottom();
-
-        var inputText = document.getElementById("chat-input");
-        inputText.placeholder = "输入消息...";
-
-        setTimeout(function () {
-            messageList.classList.remove("updating");
-        }, 300);
-    }
-
-    // 自动滚动到底部
-    function scrollToBottom() {
-        var messageList = document.getElementById("chat-area");
-        messageList.scrollTop = messageList.scrollHeight;
-    }
-
-    // 退出聊天室
-    function exit() {
-        window.location.href = "/";
-    }
+// 退出聊天室
+function exit() {
+    socket.disconnect();
+    window.location.href = "/";
 }
