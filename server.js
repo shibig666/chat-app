@@ -5,24 +5,21 @@ const io = require("socket.io")(http);
 const path = require("path");
 const crypto = require("crypto");
 
-var userInfo = [];
-var chatingUsers = [];
-var messages = [];
+var userInfo = []; //  {username,password,token}
+var chatingUsers = []; //{username,socket}
+var messages = []; //{username,message,time}
 
-// 静态文件服务
 app.use(express.static(path.join(__dirname, "public")));
 
-// 根路径，提供 index.html
 app.get("/", (req, res) => {
     res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-// 动态路由，根据用户名渲染聊天页面
 app.get("/chat", (req, res) => {
     res.sendFile(path.join(__dirname, "public", "chat.html"));
 });
 
-// 生成更安全的 token
+// 生成 token
 function generateToken() {
     return crypto.randomBytes(64).toString("hex");
 }
@@ -30,21 +27,52 @@ function generateToken() {
 // 登录接口
 app.post("/api/login", express.json(), (req, res) => {
     const username = req.body.username;
-    if (username) {
-        const existingUser = userInfo.find(
-            (user) => user.username === username
-        );
-        if (existingUser) {
-            existingUser.token = generateToken();
-            res.json({ success: true, token: existingUser.token });
-            return;
-        }
-        const token = generateToken();
-        res.json({ success: true, token: token });
-        userInfo.push({ username: username, token: token });
-    } else {
+    const password = req.body.password;
+    if (!username) {
         res.json({ success: false, message: "请输入用户名" });
+        return;
     }
+    if (!password) {
+        res.json({ success: false, message: "请输入密码" });
+        return;
+    }
+    const existingUser = userInfo.find((user) => user.username === username);
+    if (!existingUser) {
+        res.json({ success: false, message: "用户不存在" });
+        return;
+    }
+    if (existingUser.password != password) {
+        res.json({ success: false, message: "密码错误" });
+        console.log(username + " 登录失败(密码错误)");
+        return;
+    }
+    const token = generateToken();
+    res.json({ success: true, token: token });
+    existingUser.token = token;
+    console.log(username + " 登录成功");
+});
+
+// 注册接口
+app.post("/api/register", express.json(), (req, res) => {
+    const username = req.body.username;
+    const password = req.body.password;
+    if (!username) {
+        res.json({ success: false, message: "请输入用户名" });
+        return;
+    }
+    if (!password) {
+        res.json({ success: false, message: "请输入密码" });
+        return;
+    }
+    const existingUser = userInfo.find((user) => user.username === username);
+    if (existingUser) {
+        res.json({ success: false, message: "用户已存在" });
+        return;
+    }
+    const token = generateToken();
+    res.json({ success: true });
+    userInfo.push({ username: username, password: password, token: null });
+    console.log(username + " 注册成功");
 });
 
 // 验证 token 接口
@@ -72,45 +100,62 @@ function verifyUserToken(token) {
     }
 }
 
+// 格式化在线用户列表
+function transformChatUsers() {
+    return chatingUsers.map((user) => user.username).join(", ");
+}
+
 // 获取当前时间
 function getCurrentTime() {
     const now = new Date();
-    return now.toISOString(); // 格式化为 ISO 格式，或使用其他格式
-}
-
-// 格式化在线用户列表
-function transformUsernames() {
-    return userInfo.map((user) => user.username).join(", ");
+    return now.toISOString(); // 格式化为 ISO 格式
 }
 
 io.on("connection", (socket) => {
     socket.on("join", (data) => {
+        //data={token}
         const username = verifyUserToken(data.token);
         if (!username) {
+            console.log("join:Token 不存在");
             socket.emit("errorMessage", { message: "Token 不存在" });
             return;
         }
-        console.log(username + " 加入了聊天室");
-        console.log("当前在线用户：" + transformUsernames());
 
-        // 通知其他用户某人加入
-        chatingUsers.forEach((user) => {
-            user.socket.emit("userJoin", { username });
-        });
-
-        chatingUsers.push({ username: username, socket: socket });
+        // 防多端
+        const existingUser = chatingUsers.find(
+            (user) => user.username === username
+        );
+        if (existingUser && existingUser.socket) {
+            // 如果已存在用户，先断开旧的连接
+            const oldSocket = existingUser.socket;
+            if (oldSocket) {
+                oldSocket.emit("errorMessage", {
+                    message: "您已被踢出，您的账户在其他地方登录。",
+                });
+            }
+            // 更新socket
+            existingUser.socket = socket;
+        } else {
+            console.log(username + " 加入了聊天室");
+            // 通知其他用户某人加入
+            chatingUsers.forEach((user) => {
+                user.socket.emit("userJoin", { username });
+            });
+            chatingUsers.push({ username: username, socket: socket });
+            console.log("当前在线用户：" + transformChatUsers());
+        }
     });
 
     socket.on("sendMessage", (data) => {
-        const username = chatingUsers.find(
-            (user) => user.socket === socket
-        ).username;
+        const user = chatingUsers.find((user) => user.socket === socket);
 
-        if (!username) {
-            console.log("未找到用户");
+        if (!user) {
+            console.log("send:未找到用户 ");
             socket.emit("errorMessage", { message: "未找到用户" });
             return;
         }
+
+        const username = user.username;
 
         console.log(username + " 发送了：" + data.message);
         const time = getCurrentTime();
@@ -132,27 +177,23 @@ io.on("connection", (socket) => {
 
     socket.on("disconnect", () => {
         const user = chatingUsers.find((user) => user.socket === socket);
-
         if (!user) {
-            console.log("未找到用户");
+            console.log("disconnect:未找到用户");
             socket.emit("errorMessage", { message: "未找到用户" });
             return;
         }
 
         const username = user.username;
         console.log(username + " 离开了聊天室");
-        console.log("当前在线用户：" + transformUsernames());
-
+        chatingUsers = chatingUsers.filter((user) => user.socket !== socket);
+        console.log("当前在线用户：" + transformChatUsers());
         // 通知其他用户某人离开
         chatingUsers.forEach((user) => {
             user.socket.emit("userLeft", { username });
         });
-
-        chatingUsers = chatingUsers.filter((user) => user.socket !== socket);
     });
-
 });
 
 http.listen(3000, () => {
-    console.log("Server running on http://localhost:3000");
+    console.log("服务器启动，http://localhost:3000");
 });

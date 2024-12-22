@@ -1,8 +1,5 @@
 // 获取用户的 token
-const userToken = document.cookie.replace(
-    /(?:(?:^|.*;\s*)userToken\s*\=\s*([^;]*).*$)|^.*$/,
-    "$1"
-);
+const userToken = localStorage.getItem("token");
 
 // 如果没有 token，表示用户没有登录，重定向到登录页
 if (!userToken) {
@@ -69,7 +66,7 @@ socket.on("userLeft", (data) => {
 // 监听服务器的错误信息
 socket.on("errorMessage", (data) => {
     alert(data.message);
-    window.location.href = "index.html"; // 如果 token 无效，跳转回登录页
+    window.location.href = "index.html"; 
 });
 
 // 监听接收到的消息
