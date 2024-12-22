@@ -83,6 +83,7 @@ socket.on("receiveMessage", (data) => {
     sendMessage(
         data.message,
         data.username[0].toUpperCase(), 
+        color,
         messageClass,
         data.time,
         data.username
