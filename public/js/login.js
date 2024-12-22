@@ -1,7 +1,7 @@
 async function login() {
     const username = document.getElementById("login-account").value;
     const password = document.getElementById("login-password").value;
-    const hashedPassword = sha256(password); // 使用 crypto-js 哈希密码
+    const hashedPassword = sha256(password); 
     fetch("/api/login", {
         method: "POST",
         headers: {
@@ -23,13 +23,13 @@ async function login() {
 async function register() {
     const username = document.getElementById("register-account").value;
     const password = document.getElementById("register-password").value;
-    const hashedPassword = sha256(password); // 使用 crypto-js 哈希密码
+    const hashedPassword = sha256(password);
     fetch("/api/register", {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
         },
-        body: JSON.stringify({ username, password: hashedPassword }), // 发送加密后的密码
+        body: JSON.stringify({ username, password: hashedPassword }),
     })
         .then((response) => response.json())
         .then((data) => {
@@ -43,5 +43,5 @@ async function register() {
 }
 
 function sha256(message) {
-    return CryptoJS.SHA256(message).toString(CryptoJS.enc.Hex); // 使用 crypto-js 库
+    return CryptoJS.SHA256(message).toString(CryptoJS.enc.Hex);
 }
