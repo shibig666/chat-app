@@ -1,7 +1,7 @@
 // 获取用户的 token
 const userToken = localStorage.getItem("token");
 
-// 如果没有 token，表示用户没有登录，重定向到登录页
+// 如果没有 token，表重定向到登录页
 if (!userToken) {
     alert("请先登录");
     window.location.href = "index.html";
@@ -32,8 +32,7 @@ function verifyUserToken() {
                 // token 无效，跳转到登录页面
                 alert(data.message);
                 window.location.href = "index.html";
-                document.cookie =
-                    "userToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;"; // 清除 cookie
+                localStorage.removeItem("token");
             }
         })
         .catch((error) => {
@@ -66,7 +65,9 @@ socket.on("userLeft", (data) => {
 // 监听服务器的错误信息
 socket.on("errorMessage", (data) => {
     alert(data.message);
-    window.location.href = "index.html"; 
+    setTimeout(() => {
+        window.location.href = "index.html";
+    }, 2000);
 });
 
 // 监听接收到的消息
@@ -75,14 +76,13 @@ socket.on("receiveMessage", (data) => {
     var color = "green";
     if (data.username !== userName) {
         messageClass = "received";
-        color = "#9b59b6"; // 其他用户的消息颜色
+        color = "#9b59b6"; 
     }
 
     // 显示接收到的消息
     sendMessage(
         data.message,
-        data.username[0].toUpperCase(), // 头像的第一个字母
-        color,
+        data.username[0].toUpperCase(), 
         messageClass,
         data.time,
         data.username
@@ -95,7 +95,7 @@ function scrollToBottom() {
     messageList.scrollTop = messageList.scrollHeight;
 }
 
-// 显示系统消息（例如：某人加入或离开）
+// 显示系统消息
 function displaySystemMessage(message) {
     const messageElement = document.createElement("div");
     messageElement.classList.add("system-message");
@@ -219,5 +219,6 @@ function sendChatMessage() {
 // 退出聊天室
 function exit() {
     socket.disconnect();
+    localStorage.removeItem("token");
     window.location.href = "/";
 }

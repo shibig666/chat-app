@@ -3,11 +3,11 @@ const app = express();
 const http = require("http").createServer(app);
 const io = require("socket.io")(http);
 const path = require("path");
-const crypto = require("crypto");
+const crypto = require("crypto-js");
 
-var userInfo = []; //  {username,password,token}
-var chatingUsers = []; //{username,socket}
-var messages = []; //{username,message,time}
+var userInfo = []; // {username, password, token}
+var chatingUsers = []; // {username, socket}
+var messages = []; // {username, message, time}
 
 app.use(express.static(path.join(__dirname, "public")));
 
@@ -21,7 +21,7 @@ app.get("/chat", (req, res) => {
 
 // 生成 token
 function generateToken() {
-    return crypto.randomBytes(64).toString("hex");
+    return crypto.lib.WordArray.random(64).toString(); // 使用 crypto-js 生成随机 token
 }
 
 // 登录接口
@@ -41,15 +41,16 @@ app.post("/api/login", express.json(), (req, res) => {
         res.json({ success: false, message: "用户不存在" });
         return;
     }
-    if (existingUser.password != password) {
+
+    const hashedPassword = crypto.SHA256(password).toString();
+    if (existingUser.password !== hashedPassword) {
         res.json({ success: false, message: "密码错误" });
-        console.log(username + " 登录失败(密码错误)");
         return;
     }
+
     const token = generateToken();
     res.json({ success: true, token: token });
     existingUser.token = token;
-    console.log(username + " 登录成功");
 });
 
 // 注册接口
@@ -64,15 +65,23 @@ app.post("/api/register", express.json(), (req, res) => {
         res.json({ success: false, message: "请输入密码" });
         return;
     }
+
     const existingUser = userInfo.find((user) => user.username === username);
     if (existingUser) {
         res.json({ success: false, message: "用户已存在" });
         return;
     }
+
+    // 使用 crypto-js 对密码进行 SHA-256 哈希
+    const hashedPassword = crypto.SHA256(password).toString();
     const token = generateToken();
     res.json({ success: true });
-    userInfo.push({ username: username, password: password, token: null });
-    console.log(username + " 注册成功");
+
+    userInfo.push({
+        username: username,
+        password: hashedPassword,
+        token: null,
+    });
 });
 
 // 验证 token 接口
@@ -100,6 +109,10 @@ function verifyUserToken(token) {
     }
 }
 
+async function sha256(message) {
+    return crypto.SHA256(message).toString(); 
+}
+
 // 格式化在线用户列表
 function transformChatUsers() {
     return chatingUsers.map((user) => user.username).join(", ");
@@ -113,7 +126,6 @@ function getCurrentTime() {
 
 io.on("connection", (socket) => {
     socket.on("join", (data) => {
-        //data={token}
         const username = verifyUserToken(data.token);
         if (!username) {
             console.log("join:Token 不存在");
@@ -121,23 +133,19 @@ io.on("connection", (socket) => {
             return;
         }
 
-        // 防多端
         const existingUser = chatingUsers.find(
             (user) => user.username === username
         );
         if (existingUser && existingUser.socket) {
-            // 如果已存在用户，先断开旧的连接
             const oldSocket = existingUser.socket;
             if (oldSocket) {
                 oldSocket.emit("errorMessage", {
                     message: "您已被踢出，您的账户在其他地方登录。",
                 });
             }
-            // 更新socket
             existingUser.socket = socket;
         } else {
             console.log(username + " 加入了聊天室");
-            // 通知其他用户某人加入
             chatingUsers.forEach((user) => {
                 user.socket.emit("userJoin", { username });
             });
@@ -156,7 +164,6 @@ io.on("connection", (socket) => {
         }
 
         const username = user.username;
-
         console.log(username + " 发送了：" + data.message);
         const time = getCurrentTime();
         messages.push({
@@ -165,7 +172,6 @@ io.on("connection", (socket) => {
             time: time,
         });
 
-        // 广播消息给所有在线用户
         chatingUsers.forEach((user) => {
             user.socket.emit("receiveMessage", {
                 username: username,
@@ -187,7 +193,6 @@ io.on("connection", (socket) => {
         console.log(username + " 离开了聊天室");
         chatingUsers = chatingUsers.filter((user) => user.socket !== socket);
         console.log("当前在线用户：" + transformChatUsers());
-        // 通知其他用户某人离开
         chatingUsers.forEach((user) => {
             user.socket.emit("userLeft", { username });
         });
