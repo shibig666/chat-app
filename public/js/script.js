@@ -50,15 +50,26 @@ socket.emit("join", { token: userToken });
 // 监听其他用户加入聊天室
 socket.on("userJoin", (data) => {
     if (data.username === userName) return;
-    const systemMessage = `${data.username} 加入了聊天室`;
+    const systemMessage = `${data.username} 加入了聊天室\n当前在线${data.userCount}人`;
     displaySystemMessage(systemMessage);
+        getOnlineUsers().then((users) => {
+            if (users) {
+                console.log(users);
+            }
+        });
+
 });
 
 // 监听其他用户离开聊天室
 socket.on("userLeft", (data) => {
     if (data.username) {
-        const systemMessage = `${data.username} 离开了聊天室`;
+        const systemMessage = `${data.username} 离开了聊天室\n当前在线${data.userCount}人`;
         displaySystemMessage(systemMessage);
+        getOnlineUsers().then((users) => {
+            if (users) {
+                console.log(users);
+            }
+        });
     }
 });
 
@@ -76,13 +87,13 @@ socket.on("receiveMessage", (data) => {
     var color = "green";
     if (data.username !== userName) {
         messageClass = "received";
-        color = "#9b59b6"; 
+        color = "#9b59b6";
     }
 
     // 显示接收到的消息
     sendMessage(
         data.message,
-        data.username[0].toUpperCase(), 
+        data.username[0].toUpperCase(),
         color,
         messageClass,
         data.time,
@@ -131,7 +142,10 @@ function createMessageElement(
 
     // 创建消息时间
     var messageTime = document.createElement("div");
-    const messageTimeFormatted = new Date(time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const messageTimeFormatted = new Date(time).toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+    });
     messageTime.textContent = messageTimeFormatted;
     messageTime.classList.add("message-time");
     messageBubble.appendChild(messageTime);
@@ -222,4 +236,29 @@ function exit() {
     socket.disconnect();
     localStorage.removeItem("token");
     window.location.href = "/";
+}
+
+// 获取在线用户列表
+async function getOnlineUsers() {
+    const url = "/api/getUserList";
+    const fetchData = {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            authorization: userToken,
+        },
+    };
+    try {
+        const response = await fetch(url, fetchData);
+        const data = await response.json();
+        if (data.success) {
+            return data.users;
+        } else {
+            console.log("error:", data.message);
+            return null;
+        }
+    } catch (error) {
+        console.error("Error:", error);
+        return null;
+    }
 }

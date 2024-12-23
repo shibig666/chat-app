@@ -99,6 +99,25 @@ app.post("/api/verify", express.json(), (req, res) => {
     }
 });
 
+app.post("/api/getUserList", express.json(), (req, res) => {
+    const token = req.headers["authorization"];
+    if (!token) {
+        res.json({ success: false, message: "缺少token" });
+        return;
+    }
+
+    const username = verifyUserToken(token);
+    if (!username) {
+        res.json({ success: false, message: "Token 不合法" });
+        return;
+    }
+
+    res.json({
+        success: true,
+        users: chatingUsers.map((user) => user.username),
+    });
+});
+
 // 用户 Token 验证
 function verifyUserToken(token) {
     const user = userInfo.find((user) => user.token === token);
@@ -110,7 +129,7 @@ function verifyUserToken(token) {
 }
 
 async function sha256(message) {
-    return crypto.SHA256(message).toString(); 
+    return crypto.SHA256(message).toString();
 }
 
 // 格式化在线用户列表
@@ -147,7 +166,10 @@ io.on("connection", (socket) => {
         } else {
             console.log(username + " 加入了聊天室");
             chatingUsers.forEach((user) => {
-                user.socket.emit("userJoin", { username });
+                user.socket.emit("userJoin", {
+                    username,
+                    userCount: chatingUsers.length + 1,
+                });
             });
             chatingUsers.push({ username: username, socket: socket });
             console.log("当前在线用户：" + transformChatUsers());
@@ -194,7 +216,10 @@ io.on("connection", (socket) => {
         chatingUsers = chatingUsers.filter((user) => user.socket !== socket);
         console.log("当前在线用户：" + transformChatUsers());
         chatingUsers.forEach((user) => {
-            user.socket.emit("userLeft", { username });
+            user.socket.emit("userLeft", {
+                username,
+                userCount: chatingUsers.length,
+            });
         });
     });
 });
