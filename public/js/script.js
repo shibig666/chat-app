@@ -53,6 +53,7 @@ socket.emit("join", { token: userToken });
 // 监听其他用户加入聊天室
 socket.on("userJoin", (data) => {
     const systemMessage = `${data.username} 加入了聊天室\n当前在线${data.userCount}人`;
+    displaySystemMessage(systemMessage);
     addChatUser();
 });
 
@@ -60,7 +61,7 @@ socket.on("userJoin", (data) => {
 socket.on("userLeft", (data) => {
     if (data.username) {
         const systemMessage = `${data.username} 离开了聊天室\n当前在线${data.userCount}人`;
-        removeChatUser(data.username);
+        displaySystemMessage(systemMessage);
         addChatUser();
     }
 });

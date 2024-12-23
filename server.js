@@ -170,7 +170,7 @@ io.on("connection", (socket) => {
             chatingUsers.forEach((user) => {
                 user.socket.emit("userJoin", {
                     username,
-                    userCount: chatingUsers.length + 1,
+                    userCount: chatingUsers.length
                 });
             });
             console.log("当前在线用户：" + transformChatUsers());
