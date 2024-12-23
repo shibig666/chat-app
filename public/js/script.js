@@ -1,9 +1,10 @@
+
 // 获取用户的 token
 const userToken = localStorage.getItem("token");
 
 // 如果没有 token，表重定向到登录页
 if (!userToken) {
-    alert("请先登录");
+    showAlert("请先登录");
     window.location.href = "index.html";
 } else {
     // 如果有 token，验证该 token 是否有效
@@ -30,8 +31,10 @@ function verifyUserToken() {
                 console.log(`欢迎，${userName}`);
             } else {
                 // token 无效，跳转到登录页面
-                alert(data.message);
-                window.location.href = "index.html";
+                showAlert(data.message);
+                setTimeout(() => {
+                    window.location.href = "index.html";
+                }, 2000);
                 localStorage.removeItem("token");
             }
         })
@@ -49,33 +52,22 @@ socket.emit("join", { token: userToken });
 
 // 监听其他用户加入聊天室
 socket.on("userJoin", (data) => {
-    if (data.username === userName) return;
     const systemMessage = `${data.username} 加入了聊天室\n当前在线${data.userCount}人`;
-    displaySystemMessage(systemMessage);
-        getOnlineUsers().then((users) => {
-            if (users) {
-                console.log(users);
-            }
-        });
-
+    addChatUser();
 });
 
 // 监听其他用户离开聊天室
 socket.on("userLeft", (data) => {
     if (data.username) {
         const systemMessage = `${data.username} 离开了聊天室\n当前在线${data.userCount}人`;
-        displaySystemMessage(systemMessage);
-        getOnlineUsers().then((users) => {
-            if (users) {
-                console.log(users);
-            }
-        });
+        removeChatUser(data.username);
+        addChatUser();
     }
 });
 
 // 监听服务器的错误信息
 socket.on("errorMessage", (data) => {
-    alert(data.message);
+    showAlert(data.message);
     setTimeout(() => {
         window.location.href = "index.html";
     }, 2000);
@@ -262,3 +254,64 @@ async function getOnlineUsers() {
         return null;
     }
 }
+
+function showAlert(message) {
+    const errorPopup = document.querySelector(".error");
+    const closeBtn = document.querySelector(".error__close");
+    const errorTitle = document.querySelector(".error__title");
+    errorTitle.textContent = message;
+    errorPopup.classList.add("show");
+    setTimeout(() => {
+        errorPopup.classList.remove("show");
+    }, 3000);
+}
+
+function closeAlert() {
+    const errorPopup = document.querySelector(".error");
+    errorPopup.classList.remove("show");
+}
+
+function addChatUser() {
+    getOnlineUsers().then((users) => {
+        if (users) {
+            const chatingUsers = document.querySelector(".chating-users__list");
+            chatingUsers.innerHTML = "";
+            for (let i = 0; i < users.length; i++) {
+                const userElement = document.createElement("div");
+                userElement.classList.add("chating-users__item");
+                userElement.textContent = users[i];
+                chatingUsers.appendChild(userElement);
+            }
+        }
+    });
+}
+
+
+var chatingUsersStatus = false;
+document.addEventListener("DOMContentLoaded", () => {
+    const chatContainer = document.querySelector(".chat-container");
+    const chatingUsers = document.querySelector(".chating-users");
+    const chatingUsersButton = document.querySelector(".chating-users__button");
+    chatContainer.addEventListener("mousemove", (event) => {
+        var chatContainerLeftX = chatContainer.getBoundingClientRect().left;
+        if (!chatingUsersStatus) {
+            if (event.clientX - chatContainerLeftX < 50) {
+                // 当鼠标位于 chat 容器左侧 50 像素内时
+                chatingUsers.style.transform =
+                    "translateY(-50%) translateX(-90%)";
+            } else {
+                chatingUsers.style.transform =
+                    "translateY(-50%) translateX(-100%)";
+            }
+        }
+    });
+    chatingUsersButton.addEventListener("click", () => {
+        if (chatingUsers.style.transform.includes("translateX(-90%)")) {
+            chatingUsers.style.transform = "translateY(-50%) translateX(0)"; // 显示 chating-users
+            chatingUsersStatus = true;
+        } else {
+            chatingUsers.style.transform = "translateY(-50%) translateX(-100%)"; // 隐藏 chating-users
+            chatingUsersStatus = false;
+        }
+    });
+});

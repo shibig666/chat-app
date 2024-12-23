@@ -145,6 +145,7 @@ function getCurrentTime() {
 
 io.on("connection", (socket) => {
     socket.on("join", (data) => {
+        console.log("join:Token " + data.token);
         const username = verifyUserToken(data.token);
         if (!username) {
             console.log("join:Token 不存在");
@@ -165,13 +166,13 @@ io.on("connection", (socket) => {
             existingUser.socket = socket;
         } else {
             console.log(username + " 加入了聊天室");
+            chatingUsers.push({ username: username, socket: socket });
             chatingUsers.forEach((user) => {
                 user.socket.emit("userJoin", {
                     username,
                     userCount: chatingUsers.length + 1,
                 });
             });
-            chatingUsers.push({ username: username, socket: socket });
             console.log("当前在线用户：" + transformChatUsers());
         }
     });

@@ -1,7 +1,7 @@
 async function login() {
     const username = document.getElementById("login-account").value;
     const password = document.getElementById("login-password").value;
-    const hashedPassword = sha256(password); 
+    const hashedPassword = sha256(password);
     fetch("/api/login", {
         method: "POST",
         headers: {
@@ -15,7 +15,7 @@ async function login() {
                 localStorage.setItem("token", data.token);
                 window.location.href = "/chat.html";
             } else {
-                alert(data.message);
+                showAlert(data.message);
             }
         });
 }
@@ -34,14 +34,35 @@ async function register() {
         .then((response) => response.json())
         .then((data) => {
             if (data.success) {
-                alert("注册成功，请登录");
-                window.location.href = "/";
+                showAlert("注册成功，请登录",1);
+                setTimeout(() => {
+                    window.location.href = "/";
+                }, 2000);
             } else {
-                alert(data.message);
+                showAlert(data.message);
             }
         });
 }
 
 function sha256(message) {
     return CryptoJS.SHA256(message).toString(CryptoJS.enc.Hex);
+}
+
+function showAlert(message, type = 0) {
+    const errorPopup = document.querySelector(".error");
+    const closeBtn = document.querySelector(".error__close");
+    const errorTitle = document.querySelector(".error__title");
+    if (type === 1) {
+        errorPopup.style.backgroundColor = "green";
+    }
+    errorTitle.textContent = message;
+    errorPopup.classList.add("show");
+    setTimeout(() => {
+        errorPopup.classList.remove("show");
+    }, 3000);
+}
+
+function closeAlert() {
+    const errorPopup = document.querySelector(".error");
+    errorPopup.classList.remove("show");
 }
