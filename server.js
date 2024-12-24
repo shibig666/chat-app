@@ -256,6 +256,13 @@ rl.on("line", (input) => {
                 console.log("未找到用户：" + usernameToKick);
             }
             break;
+        case "show":
+            // 显示注册用户
+            console.log("注册用户：");
+            userInfo.forEach((user) => {
+                console.log(user.username);
+            });
+            break;
         default:
             console.log("未知命令：" + command);
             break;

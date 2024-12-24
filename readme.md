@@ -56,6 +56,7 @@
 
 - `list`:显示在线用户
 - `kick`:踢出指定用户
+- `show`:显示注册用户名
 
 ## 技术栈
 
@@ -100,6 +101,8 @@
 - /api/verift
   - POST，发送token，接收用户名。
   - 用于验证token合法性，获取用户名。
+- /api/getUserList
+   - POST，获取在线用户
 
 ## 许可证
 
