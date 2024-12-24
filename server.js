@@ -4,6 +4,7 @@ const http = require("http").createServer(app);
 const io = require("socket.io")(http);
 const path = require("path");
 const crypto = require("crypto-js");
+const readline = require("readline");
 
 var userInfo = []; // {username, password, token}
 var chatingUsers = []; // {username, socket}
@@ -224,6 +225,38 @@ io.on("connection", (socket) => {
         });
     });
 });
+
+// 创建 readline 接口
+const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+});
+
+// 处理命令行输入
+rl.on("line", (input) => {
+    const [command, ...args] = input.split(" ");
+    switch (command) {
+        case "list":
+            console.log("当前在线用户：" + transformChatUsers());
+            break;
+        case "kick":
+            const usernameToKick = args[0];
+            const userToKick = chatingUsers.find(user => user.username === usernameToKick);
+            if (userToKick) {
+                userToKick.socket.emit("errorMessage", { message: "您已被踢出聊天室。" });
+                userToKick.socket.disconnect();
+                chatingUsers = chatingUsers.filter(user => user.username !== usernameToKick);
+                console.log(usernameToKick + " 已被踢出聊天室");
+            } else {
+                console.log("未找到用户：" + usernameToKick);
+            }
+            break;
+        default:
+            console.log("未知命令：" + command);
+            break;
+    }
+});
+
 
 http.listen(3000, () => {
     console.log("服务器启动，http://localhost:3000");
