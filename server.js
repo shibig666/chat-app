@@ -67,6 +67,11 @@ app.post("/api/register", express.json(), (req, res) => {
         return;
     }
 
+    if(password=="e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"){
+        res.json({ success: false, message: "密码不能为空" });
+        return;
+    }
+
     const existingUser = userInfo.find((user) => user.username === username);
     if (existingUser) {
         res.json({ success: false, message: "用户已存在" });
